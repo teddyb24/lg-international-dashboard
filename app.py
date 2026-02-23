@@ -96,11 +96,15 @@ with st.sidebar:
 
     date_preset = st.selectbox(
         "Quick select",
-        ["MTD", "Last 7 days", "Last 30 days", "Last 90 days", "YTD", "Custom"],
+        ["Yesterday", "MTD", "Last 7 days", "Last 30 days", "Last 90 days", "YTD", "Custom"],
         index=0,
     )
 
-    if date_preset == "MTD":
+    yesterday = today - timedelta(days=1)
+
+    if date_preset == "Yesterday":
+        default_start, default_end = yesterday, yesterday
+    elif date_preset == "MTD":
         default_start, default_end = mtd_start, today
     elif date_preset == "Last 7 days":
         default_start, default_end = today - timedelta(days=6), today
