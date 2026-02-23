@@ -105,9 +105,9 @@ with st.sidebar:
     if date_preset == "Yesterday":
         default_start, default_end = yesterday, yesterday
     elif date_preset == "MTD":
-        default_start, default_end = mtd_start, today
+        default_start, default_end = mtd_start, yesterday
     elif date_preset == "Last 7 days":
-        default_start, default_end = today - timedelta(days=6), today
+        default_start, default_end = yesterday - timedelta(days=6), yesterday
     elif date_preset == "Last 30 days":
         default_start, default_end = today - timedelta(days=29), today
     elif date_preset == "Last 90 days":
