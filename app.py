@@ -89,39 +89,42 @@ with st.sidebar:
     st.caption(f"Last data: **{last_updated}**" if last_updated else "No data yet")
     st.divider()
 
-    # ── Date range ──────────────────────────────────────────────────────────
-    st.subheader("Date Range")
     today = date.today()
+    yesterday = today - timedelta(days=1)
     mtd_start = today.replace(day=1)
 
-    date_preset = st.selectbox(
-        "Quick select",
-        ["Yesterday", "MTD", "Last 7 days", "Last 30 days", "Last 90 days", "YTD", "Custom"],
-        index=2,
-    )
+    def _resolve_dates(preset, custom_start=None, custom_end=None):
+        if preset == "Yesterday":     return yesterday, yesterday
+        if preset == "MTD":           return mtd_start, yesterday
+        if preset == "Last 7 days":   return yesterday - timedelta(days=6), yesterday
+        if preset == "Last 30 days":  return yesterday - timedelta(days=29), yesterday
+        if preset == "Last 90 days":  return yesterday - timedelta(days=89), yesterday
+        if preset == "YTD":           return date(today.year, 1, 1), yesterday
+        if preset == "Custom":        return custom_start, custom_end
+        return mtd_start, yesterday
 
-    yesterday = today - timedelta(days=1)
+    PRESETS = ["Yesterday", "MTD", "Last 7 days", "Last 30 days", "Last 90 days", "YTD", "Custom"]
 
-    if date_preset == "Yesterday":
-        default_start, default_end = yesterday, yesterday
-    elif date_preset == "MTD":
-        default_start, default_end = mtd_start, yesterday
-    elif date_preset == "Last 7 days":
-        default_start, default_end = yesterday - timedelta(days=6), yesterday
-    elif date_preset == "Last 30 days":
-        default_start, default_end = today - timedelta(days=29), today
-    elif date_preset == "Last 90 days":
-        default_start, default_end = today - timedelta(days=89), today
-    elif date_preset == "YTD":
-        default_start, default_end = date(today.year, 1, 1), today
+    # ── Summary date ─────────────────────────────────────────────────────────
+    st.subheader("Summary Date")
+    card_preset = st.selectbox("Summary period", PRESETS, index=0, key="card_preset")
+    if card_preset == "Custom":
+        card_start = st.date_input("Start", value=yesterday, key="card_start")
+        card_end   = st.date_input("End",   value=yesterday, key="card_end")
     else:
-        default_start, default_end = mtd_start, today
+        card_start, card_end = _resolve_dates(card_preset)
+        st.caption(f"{card_start} → {card_end}")
 
-    if date_preset == "Custom":
-        start_date = st.date_input("Start date", value=default_start)
-        end_date = st.date_input("End date", value=default_end)
+    st.divider()
+
+    # ── Chart date range ──────────────────────────────────────────────────────
+    st.subheader("Chart Date Range")
+    chart_preset = st.selectbox("Chart period", PRESETS, index=3, key="chart_preset")
+    if chart_preset == "Custom":
+        start_date = st.date_input("Start", value=yesterday - timedelta(days=29), key="chart_start")
+        end_date   = st.date_input("End",   value=yesterday, key="chart_end")
     else:
-        start_date, end_date = default_start, default_end
+        start_date, end_date = _resolve_dates(chart_preset)
         st.caption(f"{start_date} → {end_date}")
 
     st.divider()
@@ -209,22 +212,19 @@ def _yoy_delta(df: pd.DataFrame, metric: str, countries: list, start: date, end:
 all_ctry = get_countries(df_all)
 int_ctry = [c for c in all_ctry if c not in ("US", "Total", "Global Total")]
 
-# Summary cards always show yesterday regardless of sidebar filter
-_card_start = date.today() - timedelta(days=1)
-_card_end   = _card_start
-
-st.subheader(f"Summary — {_card_start.strftime('%b %-d, %Y')}")
+card_label = card_start.strftime("%b %-d") if card_start == card_end else f"{card_start.strftime('%b %-d')} – {card_end.strftime('%b %-d')}"
+st.subheader(f"Summary — {card_label}")
 c1, c2, c3, c4, c5 = st.columns(5)
 
 with c1:
-    rev = get_summary_value(df_all, "Net Revenue + Shipping", ["Total"], _card_start, _card_end)
+    rev = get_summary_value(df_all, "Net Revenue + Shipping", ["Total"], card_start, card_end)
     rev_display = rev * 1000 if rev is not None else None
-    delta = _yoy_delta(df_all, "Net Revenue + Shipping", ["Total"], _card_start, _card_end)
+    delta = _yoy_delta(df_all, "Net Revenue + Shipping", ["Total"], card_start, card_end)
     st.metric("Total Net Revenue", _fmt_currency(rev_display), delta=delta or None)
 
 with c2:
-    int_rev = get_summary_value(df_all, "Net Revenue + Shipping", ["International"], _card_start, _card_end)
-    tot_rev = get_summary_value(df_all, "Net Revenue + Shipping", ["Total"], _card_start, _card_end)
+    int_rev = get_summary_value(df_all, "Net Revenue + Shipping", ["International"], card_start, card_end)
+    tot_rev = get_summary_value(df_all, "Net Revenue + Shipping", ["Total"], card_start, card_end)
     if int_rev is not None and tot_rev and tot_rev != 0:
         int_share = int_rev / tot_rev * 100
         int_share_str = _fmt_pct(int_share)
@@ -233,22 +233,22 @@ with c2:
     st.metric("International Share %", int_share_str)
 
 with c3:
-    nc = get_summary_value(df_all, "New Customers", ["Total", "Global Total"], _card_start, _card_end)
+    nc = get_summary_value(df_all, "New Customers", ["Total", "Global Total"], card_start, card_end)
     if nc is None:
-        nc = get_summary_value(df_all, "New Customers", int_ctry + ["US"], _card_start, _card_end)
-    delta_nc = _yoy_delta(df_all, "New Customers", ["Total", "Global Total"], _card_start, _card_end)
+        nc = get_summary_value(df_all, "New Customers", int_ctry + ["US"], card_start, card_end)
+    delta_nc = _yoy_delta(df_all, "New Customers", ["Total", "Global Total"], card_start, card_end)
     st.metric("Total New Customers", _fmt_number(nc), delta=delta_nc or None)
 
 with c4:
-    cac = get_summary_value(df_all, "CAC", ["Total", "Global Total"], _card_start, _card_end, aggregation="mean")
+    cac = get_summary_value(df_all, "CAC", ["Total", "Global Total"], card_start, card_end, aggregation="mean")
     st.metric("Blended CAC", _fmt_currency(cac))
 
 with c5:
-    spend = get_summary_value(df_all, "Ad Spend", ["Total", "Global Total"], _card_start, _card_end)
+    spend = get_summary_value(df_all, "Ad Spend", ["Total", "Global Total"], card_start, card_end)
     if spend is None:
-        spend = get_summary_value(df_all, "Ad Spend", int_ctry + ["US"], _card_start, _card_end)
+        spend = get_summary_value(df_all, "Ad Spend", int_ctry + ["US"], card_start, card_end)
     spend_display = spend * 1000 if spend is not None else None
-    delta_spend = _yoy_delta(df_all, "Ad Spend", ["Total", "Global Total"], _card_start, _card_end)
+    delta_spend = _yoy_delta(df_all, "Ad Spend", ["Total", "Global Total"], card_start, card_end)
     st.metric("Total Ad Spend", _fmt_currency(spend_display), delta=delta_spend or None)
 
 st.divider()
