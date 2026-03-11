@@ -176,6 +176,10 @@ if not selected_countries:
 # Filtered frame for selected metric + countries + date range
 df_filtered = filter_data(df_all, [selected_metric], selected_countries, start_date, end_date)
 
+# Metrics that should be averaged across countries/days rather than summed
+_MEAN_METRICS = {"CAC", "Share %", "Share of INT %", "% of Ad Spend", "YoY %", "YoY #"}
+_metric_agg = "mean" if selected_metric in _MEAN_METRICS else "sum"
+
 # ── Summary cards ────────────────────────────────────────────────────────────
 
 def _fmt_currency(v):
@@ -262,7 +266,7 @@ if df_filtered.empty:
 else:
     pivot = (
         df_filtered.groupby(["date", "country"])["value"]
-        .sum()
+        .agg(_metric_agg)
         .reset_index()
         .sort_values("date")
     )
@@ -307,16 +311,17 @@ with col_bar:
     else:
         agg = (
             df_filtered.groupby("country")["value"]
-            .sum()
+            .agg(_metric_agg)
             .reset_index()
             .sort_values("value", ascending=True)
         )
+        agg_label = "Avg" if _metric_agg == "mean" else "Total"
         fig_bar = px.bar(
             agg,
             x="value",
             y="country",
             orientation="h",
-            title=f"Total {selected_metric} by Country ({start_date} – {end_date})",
+            title=f"{agg_label} {selected_metric} by Country ({start_date} – {end_date})",
             labels={"value": selected_metric, "country": "Country"},
             template="plotly_dark",
             color="value",
