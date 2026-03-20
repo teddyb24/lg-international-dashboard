@@ -31,6 +31,27 @@ st.set_page_config(
 )
 
 # ---------------------------------------------------------------------------
+# Password gate
+# ---------------------------------------------------------------------------
+
+def _check_password():
+    if st.session_state.get("authenticated"):
+        return True
+    st.markdown("## 💄 LG International Dashboard")
+    pwd = st.text_input("Enter password", type="password", key="pwd_input")
+    if st.button("Login"):
+        if pwd == st.secrets["dashboard_password"]:
+            st.session_state["authenticated"] = True
+            st.rerun()
+        else:
+            st.error("Incorrect password.")
+    return False
+
+if not _check_password():
+    st.stop()
+
+
+# ---------------------------------------------------------------------------
 # Custom CSS tweaks (dark theme supplement)
 # ---------------------------------------------------------------------------
 
