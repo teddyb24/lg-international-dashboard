@@ -21,6 +21,9 @@ jobs:
       - name: Install dependencies
         run: pip install gspread google-auth pandas
 
+      - name: Wake up Streamlit app
+        run: curl -s "${{ secrets.DASHBOARD_URL }}/_stcore/health" || true
+
       - name: Send daily report
         env:
           SHEET_URL:               ${{ secrets.SHEET_URL }}
