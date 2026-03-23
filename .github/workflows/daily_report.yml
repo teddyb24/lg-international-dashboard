@@ -2,7 +2,7 @@ name: Daily Performance Report
 
 on:
   schedule:
-    - cron: "30 13 * * *"   # 8:30 AM ET (UTC-5 / EST)
+    - cron: "0 13 * * *"    # 8:00 AM ET (UTC-5 / EST)
   workflow_dispatch:         # lets you trigger manually from GitHub UI
 
 jobs:
