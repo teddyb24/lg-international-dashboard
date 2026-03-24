@@ -222,17 +222,16 @@ def _fmt_number(v):
         return "—"
     return f"{v:,.0f}"
 
-def _yoy_delta(df: pd.DataFrame, metric: str, countries: list, start: date, end: date) -> str:
-    """Compute YoY % change for the same period last year."""
+def _yoy_delta(df: pd.DataFrame, metric: str, countries: list, start: date, end: date):
+    """Compute YoY % change for the same period last year. Returns formatted string with sign for st.metric."""
     ly_start = start.replace(year=start.year - 1)
     ly_end = end.replace(year=end.year - 1)
     cur = get_summary_value(df, metric, countries, start, end)
     prev = get_summary_value(df, metric, countries, ly_start, ly_end)
     if cur is None or prev is None or prev == 0:
-        return ""
+        return None
     pct = (cur - prev) / abs(prev) * 100
-    arrow = "▲" if pct >= 0 else "▼"
-    return f"{arrow} {abs(pct):.1f}% YoY"
+    return f"{pct:+.1f}% YoY"
 
 all_ctry = get_countries(df_all)
 int_ctry = [c for c in all_ctry if c not in ("US", "Total", "Global Total")]
@@ -245,7 +244,7 @@ with c1:
     rev = get_summary_value(df_all, "Net Revenue + Shipping", ["Total"], card_start, card_end)
     rev_display = rev * 1000 if rev is not None else None
     delta = _yoy_delta(df_all, "Net Revenue + Shipping", ["Total"], card_start, card_end)
-    st.metric("Total Net Revenue", _fmt_currency(rev_display), delta=delta or None)
+    st.metric("Total Net Revenue", _fmt_currency(rev_display), delta=delta)
 
 with c2:
     int_rev = get_summary_value(df_all, "Net Revenue + Shipping", ["International"], card_start, card_end)
